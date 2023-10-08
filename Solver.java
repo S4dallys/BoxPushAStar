@@ -7,7 +7,7 @@ import java.util.Comparator;
 public class Solver {
     public static void main(String[] args) {
         try {
-            MapImporter mi = MapImporter.getDataFromFile("fourboxes2");
+            MapImporter mi = MapImporter.getDataFromFile("fiveboxes1");
 
             char[][] mapData = mi.mapData;
             char[][] itemsData = mi.itemsData;
@@ -45,12 +45,13 @@ public class Solver {
             // check if goal node? might not work
             // backtracks so sequence of boxmoves is in reverse order
             // current.hCost == 0 ??
-            if (current.hCost == 0) {
+            if (isGoal(mapData, current)) {
                 while (current.gCost != 0) {
                     backtrack.add(current.move);
                     current = current.parent;
                 }
 
+                System.out.println("I WIN");
                 return backtrack;
             }
 
@@ -86,7 +87,7 @@ public class Solver {
                 Node child = new Node(newBoxes, current, move, newState, current.gCost + 1, HFunction(newBoxes, goals));
 
                 // see if child is open or closed already
-                if (open.contains(child) || closed.contains(child)) {
+                if (open.contains(child) || closed.contains(child) || isDeadlock(mapData, itemsData, boxMoved, boxMoved, 0)) {
                     continue;
                 }
 
@@ -99,18 +100,43 @@ public class Solver {
 
     private static int HFunction(Coord[] boxes, Coord[] goals) {
         //replace by passing list of items and list and maps
-        int sum =0;
+        // int sum =0;
+        // for (Coord box : boxes) {
+        //     int lowest = Coord.manhattanDist(box, goals[0]);
+        //     for (Coord goal : goals) {
+        //         int cur = Coord.manhattanDist(box, goal);
+        //         if(cur<lowest)lowest=cur;
+        //     }
+        //     sum+=lowest;
+        // }
+
+
+        // return sum;
+
+        int distance = 0;
+        ArrayList<Integer> distances = new ArrayList<>();
         for (Coord box : boxes) {
-            int lowest = Coord.manhattanDist(box, goals[0]);
+            distance = 0;
             for (Coord goal : goals) {
-                int cur = Coord.manhattanDist(box, goal);
-                if(cur<lowest)lowest=cur;
+                distance += Math.abs(box.r - goal.r) + Math.abs(box.c - goal.c);
+                // if (minGoal == null || distance < minDistance) {
+                //     minGoal = goal;
+                //     minDistance = distance;
+                // }
             }
-            sum+=lowest;
+            // distances[i++] = minDistance;
+            // minGoal = null;
+            // bag.get(1).remove(minGoal);
+            distances.add(distance / boxes.length);
         }
 
+        int hCost = 0;
 
-        return sum;
+        for (int d : distances) {
+            hCost += d;
+        }
+
+        return hCost / boxes.length;
     }
 
     private static char[][] newState(char[][] previousState, BoxMove move) {
@@ -153,6 +179,7 @@ public class Solver {
     }
 
     public static boolean isDeadlock(char[][] mapData, char[][] itemsData, Coord box, Coord ignore, int depth) {
+        if (mapData[box.r][box.c] == '.') return false;
         if (depth == 3) return false;
 
         Coord[] dirs = box.getUDLRCoords();
@@ -171,7 +198,8 @@ public class Solver {
                 dirBlocked[dbInd] = false;
             }
             else if (id == '$') {
-                dirBlocked[dbInd] = isDeadlock(mapData, itemsData, dir, box, depth + 1);
+                // dirBlocked[dbInd] = isDeadlock(mapData, itemsData, dir, dir, depth + 1);
+                dirBlocked[dbInd] = true;
             } else {
                 dirBlocked[dbInd] = true;
             }
