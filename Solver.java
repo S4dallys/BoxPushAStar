@@ -36,6 +36,8 @@ public class Solver {
         HashSet<Node> closed = new HashSet<>();
         ArrayList<BoxMove> backtrack = new ArrayList<>();
 
+        char[][] check = null;
+
         open.add(root);
 
         while (!open.isEmpty()) {
@@ -61,6 +63,7 @@ public class Solver {
                 Coord[] newBoxes = new Coord[boxes.length];
                 Coord prevBox = move.coord;
                 Coord boxMoved = null;
+                
                 for (int i = 0; i < boxes.length; i++) {
                     newBoxes[i] = new Coord(current.boxes[i]);
 
@@ -87,7 +90,8 @@ public class Solver {
                 Node child = new Node(newBoxes, current, move, newState, current.gCost + 1, HFunction(newBoxes, goals));
 
                 // see if child is open or closed already
-                if (open.contains(child) || closed.contains(child) || isDeadlock(mapData, itemsData, boxMoved, boxMoved, 0)) {
+                if (open.contains(child) || closed.contains(child) || isDeadlock(mapData, child.itemsData, boxMoved, boxMoved, 0)) {
+                    check = child.itemsData;
                     continue;
                 }
 
@@ -95,55 +99,42 @@ public class Solver {
             }
         }
 
+        for (int i = 0 ; i < check.length; i++) {
+            for (int j = 0; j < check[0].length; j++) {
+                if (mapData[i][j] == '#')
+                    System.out.print(mapData[i][j]);
+                else
+                    System.out.print(check[i][j]);
+            }
+            System.out.println();
+        }
         return backtrack;
     }
 
     private static int HFunction(Coord[] boxes, Coord[] goals) {
         //replace by passing list of items and list and maps
-        // int sum =0;
-        // for (Coord box : boxes) {
-        //     int lowest = Coord.manhattanDist(box, goals[0]);
-        //     for (Coord goal : goals) {
-        //         int cur = Coord.manhattanDist(box, goal);
-        //         if(cur<lowest)lowest=cur;
-        //     }
-        //     sum+=lowest;
-        // }
-
-
-        // return sum;
-
-        int distance = 0;
-        ArrayList<Integer> distances = new ArrayList<>();
+        int sum =0;
         for (Coord box : boxes) {
-            distance = 0;
+            int lowest = Coord.manhattanDist(box, goals[0]);
             for (Coord goal : goals) {
-                distance += Math.abs(box.r - goal.r) + Math.abs(box.c - goal.c);
-                // if (minGoal == null || distance < minDistance) {
-                //     minGoal = goal;
-                //     minDistance = distance;
-                // }
+                int cur = Coord.manhattanDist(box, goal);
+                if(cur<lowest)lowest=cur;
             }
-            // distances[i++] = minDistance;
-            // minGoal = null;
-            // bag.get(1).remove(minGoal);
-            distances.add(distance / boxes.length);
+            sum+=lowest;
         }
 
-        int hCost = 0;
 
-        for (int d : distances) {
-            hCost += d;
-        }
-
-        return hCost / boxes.length;
+        return sum / boxes.length;
     }
 
     private static char[][] newState(char[][] previousState, BoxMove move) {
         char[][] newState = new char[previousState.length][previousState[0].length];
 
         for (int i = 0; i < previousState.length; i++) {
-            newState[i] = previousState[i].clone();
+            for (int j = 0; j < previousState[0].length; j++) {
+                if (previousState[i][j] == '@') continue;
+                newState[i][j] = previousState[i][j];
+            }
         }
 
         newState[move.coord.r][move.coord.c] = '@';
@@ -180,7 +171,7 @@ public class Solver {
 
     public static boolean isDeadlock(char[][] mapData, char[][] itemsData, Coord box, Coord ignore, int depth) {
         if (mapData[box.r][box.c] == '.') return false;
-        if (depth == 3) return false;
+        if (depth == 10) return false;
 
         Coord[] dirs = box.getUDLRCoords();
 
