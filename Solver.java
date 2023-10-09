@@ -85,11 +85,9 @@ public class Solver {
             }
 
             // generate children
-            outer:
-            for (BoxMove move : BoxMove.generateBoxMoves(mapData, current.itemsData, current.move.coord, current.boxes)) {
+            for (BoxMove move : BoxMove.generateBoxMoves(mapData, current.itemsData, current.move.coord, current.boxes, deadzone)) {
                 Coord[] newBoxes = new Coord[boxes.length];
                 Coord prevBox = move.coord;
-                Coord boxMoved = null;
                 
                 for (int i = 0; i < boxes.length; i++) {
                     newBoxes[i] = new Coord(current.boxes[i]);
@@ -109,12 +107,6 @@ public class Solver {
                             newBoxes[i].c += 1;
                             break;
                         }
-
-                        boxMoved = newBoxes[i];
-
-                        // prune child if box moved is in a deadzone
-                        if (deadzone[boxMoved.r][boxMoved.c])
-                            continue outer;
                     }
                 }
 
@@ -123,7 +115,6 @@ public class Solver {
                 // see if child is open or closed already
                 // ArrayList<Coord> visited = new ArrayList<>();
                 if (open.contains(child) || closed.contains(child)) {
-                    check = child.itemsData;
                     continue;
                 }
 
@@ -131,15 +122,6 @@ public class Solver {
             }
         }
 
-        for (int i = 0 ; i < check.length; i++) {
-            for (int j = 0; j < check[0].length; j++) {
-                if (mapData[i][j] == '#')
-                    System.out.print(mapData[i][j]);
-                else
-                    System.out.print(check[i][j]);
-            }
-            System.out.println();
-        }
         return backtrack;
     }
 
@@ -203,47 +185,7 @@ public class Solver {
         return true;
     }
 
-    public static boolean isDeadlock(char[][] mapData, char[][] itemsData, Coord box, ArrayList<Coord> visited) {
-        if (mapData[box.r][box.c] == '.') return false;
-        if (visited.contains(box)) return false;
-
-        Coord[] dirs = box.getUDLRCoords();
-
-        Coord temp = dirs[1];
-        dirs[1] = dirs[2];
-        dirs[2] = temp;
-
-        boolean[] dirBlocked = new boolean[5];
-        int dbInd = 0;
-
-        for (Coord dir : dirs) {
-            char md = mapData[dir.r][dir.c];
-            char id = itemsData[dir.r][dir.c];
-            if (md == '#') {
-                dirBlocked[dbInd] = false;
-            }
-            else if (id == '$') {
-                // visited.add(box);
-                // dirBlocked[dbInd] = isDeadlock(mapData, itemsData, dir, visited);
-                dirBlocked[dbInd] = true;
-            } else {
-                dirBlocked[dbInd] = true;
-            }
-            dbInd++;
-        }
-
-        dirBlocked[dbInd++] = dirBlocked[0];
-
-        int consecutiveFalses = 0;
-        
-        for (boolean b : dirBlocked) {
-            if (b == false) consecutiveFalses++;
-            else consecutiveFalses = 0;
-
-            if (consecutiveFalses >= 2) {
-                return true;
-            }
-        }
+    public static boolean isFreezeDeadlock(char[][] mapData, char[][] itemsData, Coord box, ArrayList<Coord> visited) {
 
         return false;
     }

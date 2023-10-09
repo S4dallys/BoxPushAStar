@@ -29,8 +29,8 @@ public class BoxMove {
         this.coord = coord;
     }
 
-    public static ArrayList<BoxMove> generateBoxMoves(char[][] mapData, char[][] itemsData, Coord player, Coord[] allBoxCoords) {
-        // return this
+    public static ArrayList<BoxMove> generateBoxMoves(char[][] mapData, char[][] itemsData, Coord player, Coord[] allBoxCoords, boolean[][] deadlock) {
+        /// return this
         ArrayList<BoxMove> boxPushes = new ArrayList<>();
 
         // for each box coordinate
@@ -46,16 +46,20 @@ public class BoxMove {
             c2 = UDLR[1];
             if (isOpen(mapData[c1.r][c1.c]) && isOpen(itemsData[c1.r][c1.c])
             && isOpen(mapData[c2.r][c2.c]) && isOpen(itemsData[c2.r][c2.c])) {
-                possibleBoxPushes.put(new BoxMove('d', box), c1);
-                possibleBoxPushes.put(new BoxMove('u', box), c2);
+                if (!deadlock[c2.r][c2.c])
+                    possibleBoxPushes.put(new BoxMove('d', box), c1);
+                if (!deadlock[c1.r][c1.c])
+                    possibleBoxPushes.put(new BoxMove('u', box), c2);
             }
 
             c1 = UDLR[2];
             c2 = UDLR[3];
             if (isOpen(mapData[c1.r][c1.c]) && isOpen(itemsData[c1.r][c1.c])
             && isOpen(mapData[c2.r][c2.c]) && isOpen(itemsData[c2.r][c2.c])) {
-                possibleBoxPushes.put(new BoxMove('r', box), c1);
-                possibleBoxPushes.put(new BoxMove('l', box), c2);
+                if (!deadlock[c2.r][c2.c])
+                    possibleBoxPushes.put(new BoxMove('r', box), c1);
+                if (!deadlock[c1.r][c1.c])
+                    possibleBoxPushes.put(new BoxMove('l', box), c2);
             }
         }
 
