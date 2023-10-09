@@ -1,13 +1,14 @@
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.PriorityQueue;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 
 public class Solver {
     public static void main(String[] args) {
         try {
-            MapImporter mi = MapImporter.getDataFromFile("fiveboxes1");
+            MapImporter mi = MapImporter.getDataFromFile("fiveboxes2");
 
             char[][] mapData = mi.mapData;
             char[][] itemsData = mi.itemsData;
@@ -26,6 +27,19 @@ public class Solver {
         Coord[] boxes = new Coord[nBoxes];
         Coord[] goals = new Coord[nBoxes];
         BoxMove.getAllItemsCoordinates(mapData, itemsData, boxes, goals);
+
+        boolean[][] deadzone = generateDeadzone(mapData);
+
+        for (int i = 0; i < deadzone.length; i++) {
+            for (int j = 0; j < deadzone[0].length; j++) {
+                if (deadzone[i][j])
+                System.out.print('x');
+                else
+                System.out.print('.');
+            }
+            System.out.println();
+        }
+
         Node root = new Node (
             boxes, null, new BoxMove(' ', player), 
             itemsData, 0, HFunction(boxes, goals)
@@ -47,19 +61,32 @@ public class Solver {
             // check if goal node? might not work
             // backtracks so sequence of boxmoves is in reverse order
             // current.hCost == 0 ??
-            if (isGoal(mapData, current)) {
+            if (current.hCost == 0) {
+                check = current.itemsData;
                 while (current.gCost != 0) {
                     backtrack.add(current.move);
                     current = current.parent;
                 }
 
+
                 System.out.println("I WIN");
+
+                for (int i = 0 ; i < check.length; i++) {
+                    for (int j = 0; j < check[0].length; j++) {
+                        if (mapData[i][j] == '#' || mapData[i][j] == '.')
+                            System.out.print(mapData[i][j]);
+                        else
+                            System.out.print(check[i][j]);
+                    }
+                    System.out.println();
+                }
+
                 return backtrack;
             }
 
             // generate children
+            outer:
             for (BoxMove move : BoxMove.generateBoxMoves(mapData, current.itemsData, current.move.coord, current.boxes)) {
-                char[][] newState = newState(current.itemsData, move);
                 Coord[] newBoxes = new Coord[boxes.length];
                 Coord prevBox = move.coord;
                 Coord boxMoved = null;
@@ -84,13 +111,18 @@ public class Solver {
                         }
 
                         boxMoved = newBoxes[i];
+
+                        // prune child if box moved is in a deadzone
+                        if (deadzone[boxMoved.r][boxMoved.c])
+                            continue outer;
                     }
                 }
 
-                Node child = new Node(newBoxes, current, move, newState, current.gCost + 1, HFunction(newBoxes, goals));
+                Node child = new Node(newBoxes, current, move, newState(current.itemsData, move), current.gCost + 1, HFunction(newBoxes, goals));
 
                 // see if child is open or closed already
-                if (open.contains(child) || closed.contains(child) || isDeadlock(mapData, child.itemsData, boxMoved, boxMoved, 0)) {
+                // ArrayList<Coord> visited = new ArrayList<>();
+                if (open.contains(child) || closed.contains(child)) {
                     check = child.itemsData;
                     continue;
                 }
@@ -113,6 +145,8 @@ public class Solver {
 
     private static int HFunction(Coord[] boxes, Coord[] goals) {
         //replace by passing list of items and list and maps
+        // return 0;
+
         int sum =0;
         for (Coord box : boxes) {
             int lowest = Coord.manhattanDist(box, goals[0]);
@@ -124,7 +158,7 @@ public class Solver {
         }
 
 
-        return sum / boxes.length;
+        return sum;
     }
 
     private static char[][] newState(char[][] previousState, BoxMove move) {
@@ -169,9 +203,9 @@ public class Solver {
         return true;
     }
 
-    public static boolean isDeadlock(char[][] mapData, char[][] itemsData, Coord box, Coord ignore, int depth) {
+    public static boolean isDeadlock(char[][] mapData, char[][] itemsData, Coord box, ArrayList<Coord> visited) {
         if (mapData[box.r][box.c] == '.') return false;
-        if (depth == 10) return false;
+        if (visited.contains(box)) return false;
 
         Coord[] dirs = box.getUDLRCoords();
 
@@ -185,11 +219,12 @@ public class Solver {
         for (Coord dir : dirs) {
             char md = mapData[dir.r][dir.c];
             char id = itemsData[dir.r][dir.c];
-            if (dir.equals(ignore) || md == '#') {
+            if (md == '#') {
                 dirBlocked[dbInd] = false;
             }
             else if (id == '$') {
-                // dirBlocked[dbInd] = isDeadlock(mapData, itemsData, dir, dir, depth + 1);
+                // visited.add(box);
+                // dirBlocked[dbInd] = isDeadlock(mapData, itemsData, dir, visited);
                 dirBlocked[dbInd] = true;
             } else {
                 dirBlocked[dbInd] = true;
@@ -211,6 +246,55 @@ public class Solver {
         }
 
         return false;
+    }
+
+    public static boolean[][] generateDeadzone(char[][] mapData) {
+        // delete all boxes, find player
+        boolean[][] deadzone = new boolean[mapData.length][mapData[0].length];
+        ArrayList<Coord> goals = new ArrayList<>();
+
+        for (int i = 0; i < mapData.length; i++) {
+            for (int j = 0; j < mapData[0].length; j++) {
+                if (mapData[i][j] == '.') {
+                    goals.add(new Coord(i, j));
+                }
+                deadzone[i][j] = true;
+            }
+        }
+
+        for (Coord goal : goals) {
+            ArrayDeque<Coord> queue = new ArrayDeque<>();
+            HashSet<Coord> visited = new HashSet<>();
+
+            queue.add(goal);
+
+            while (!queue.isEmpty()) {            
+                Coord curr = queue.removeLast();
+                
+                visited.add(curr);
+                deadzone[curr.r][curr.c] = false;
+
+                Coord[] children = curr.getUDLRCoords();
+
+                Coord cChild = children[0];
+                if (BoxMove.isOpen(mapData[cChild.r][cChild.c]) && BoxMove.isOpen(mapData[cChild.r - 1][cChild.c]) && !visited.contains(cChild))
+                    queue.add(cChild);
+
+                cChild = children[1];
+                if (BoxMove.isOpen(mapData[cChild.r][cChild.c]) && BoxMove.isOpen(mapData[cChild.r + 1][cChild.c]) && !visited.contains(cChild))
+                    queue.add(cChild);
+
+                cChild = children[2];
+                if (BoxMove.isOpen(mapData[cChild.r][cChild.c]) && BoxMove.isOpen(mapData[cChild.r][cChild.c - 1]) && !visited.contains(cChild))
+                    queue.add(cChild);
+
+                cChild = children[3];
+                if (BoxMove.isOpen(mapData[cChild.r][cChild.c]) && BoxMove.isOpen(mapData[cChild.r][cChild.c + 1]) && !visited.contains(cChild))
+                    queue.add(cChild);
+            }
+        }
+
+        return deadzone;
     }
 
     public static class Node {

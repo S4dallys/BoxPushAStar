@@ -84,7 +84,7 @@ public class BoxMove {
         return boxPushes;
     }
 
-    private static boolean isOpen(char c) {
+    public static boolean isOpen(char c) {
         return (c != '$' && c != '#');
     }
 
